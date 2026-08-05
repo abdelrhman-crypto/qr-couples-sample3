@@ -5,120 +5,170 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>You've Got Mail! 💌</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Poppins', sans-serif; }
         .handwriting { font-family: 'Caveat', cursive; }
 
-        /* Banner Decoration */
-        .bunting {
-            background-image: radial-gradient(circle, #ffeb3b 20%, transparent 20%), radial-gradient(circle, #00bcd4 20%, transparent 20%), radial-gradient(circle, #e91e63 20%, transparent 20%);
-            background-size: 15px 15px;
-            background-position: 0 0, 7px 7px, 3px 3px;
+        #step-1, #step-2, #step-3 { transition: opacity 0.4s ease-in-out; }
+        .hidden-transition { opacity: 0; pointer-events: none; }
+
+        /* حركة الزينة العائمة في الخلفية */
+        @keyframes float-around {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(10deg); }
+        }
+        .decor-item { animation: float-around 4s ease-in-out infinite; position: absolute; }
+        
+        /* Canvas الألعاب النارية يغطي الشاشة بالكامل ويكون خلف المحتوى الرئيسي */
+        #fireworksCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 5;
         }
     </style>
 </head>
-<body class="bg-[#f3f3f3] min-h-screen flex items-center justify-center p-4 overflow-x-hidden">
+<body class="bg-[#f3f3f3] min-h-screen flex items-center justify-center p-4 overflow-x-hidden relative">
 
-    <!-- مشغل صوت مخفي -->
     {% if data.song_url %}
         <audio id="bgMusic" loop preload="auto" style="display: none;">
             <source src="{{ data.song_url }}" type="audio/mpeg">
         </audio>
     {% endif %}
 
-    <!-- 1️⃣ الشاشة الأولى (الظرف والرسالة الأولى) -->
-    <div id="step-1" class="text-center transition-all duration-500 max-w-sm w-full">
-        <h1 class="handwriting text-4xl text-gray-800 mb-6">hey {{ data.recipient_name }}!</h1>
+    <!-- 1️⃣ الشاشة الأولى: الظرف -->
+    <div id="step-1" class="text-center transition-all duration-500 max-w-sm w-full z-10 flex flex-col items-center">
+        <h1 class="handwriting text-4xl text-gray-800 mb-8">hey {{ data.recipient_name }}!</h1>
         
         <div onclick="openEmail()" class="cursor-pointer transition-transform hover:scale-105 active:scale-95 inline-block my-4">
-            <div class="w-64 h-44 bg-[#f8a3b8] rounded-2xl relative shadow-md flex items-center justify-center border-2 border-white">
-                <!-- Flap -->
-                <div class="absolute top-0 w-0 h-0 border-l-[128px] border-l-transparent border-r-[128px] border-r-transparent border-t-[90px] border-t-[#f38ba8] origin-top"></div>
-                <!-- Heart -->
-                <div class="z-10 text-red-500 text-4xl animate-bounce">❤️</div>
+            <div class="w-64 h-44 bg-[#f8a3b8] rounded-2xl relative shadow-lg flex items-center justify-center border-2 border-white overflow-hidden group">
+                <div id="envelopeFlap" class="absolute top-0 w-0 h-0 border-l-[128px] border-l-transparent border-r-[128px] border-r-transparent border-t-[90px] border-t-[#ee7090] origin-top transition-transform duration-500"></div>
+                <div class="z-10 text-red-500 text-5xl animate-pulse">❤️</div>
             </div>
         </div>
 
-        <p class="handwriting text-2xl text-gray-600 mt-4">you've got new emails</p>
+        <p class="handwriting text-2xl text-gray-600 mt-6">you've got new emails</p>
     </div>
 
-    <!-- 2️⃣ الشاشة الثانية (واجهة الـ Email الحمراء) -->
-    <div id="step-2" class="hidden transition-all duration-500 max-w-sm w-full">
+    <!-- 2️⃣ الشاشة الثانية: الإيميل -->
+    <div id="step-2" class="hidden hidden-transition text-center max-w-sm w-full z-10">
         <div class="bg-[#e60023] text-white p-6 rounded-3xl shadow-2xl relative transform -rotate-1 border-4 border-white">
             <div class="space-y-2 text-left handwriting text-2xl">
-                <p><span class="font-bold">From:</span> {{ data.sender_name }}</p>
-                <p><span class="font-bold">To:</span> {{ data.recipient_name }}</p>
-                <div class="pt-4">
+                <p><span class="font-bold text-lg">From:</span> <span class="font-normal">{{ data.sender_name }}</span></p>
+                <p><span class="font-bold text-lg">To:</span> <span class="font-normal">{{ data.recipient_name }}</span></p>
+                <div class="pt-5">
                     <p class="font-bold mb-1">Message:</p>
-                    <p class="text-xl font-normal leading-snug">{{ data.email_message }}</p>
+                    <p class="text-xl font-normal leading-relaxed text-gray-100">{{ data.email_message }}</p>
                 </div>
             </div>
 
-            <div class="mt-8 text-center">
-                <button onclick="openMainCard()" class="text-xs underline text-white hover:text-gray-200 transition font-mono tracking-wider uppercase">
+            <div class="mt-10 text-center">
+                <button onclick="openMainCard()" class="px-5 py-2 border border-white rounded-full text-xs underline text-white hover:bg-white hover:text-[#e60023] transition font-mono tracking-wider uppercase">
                     see attachment
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- 3️⃣ الشاشة الثالثة (صفحة المعايدة الكبيرة الأحمر) -->
-    <div id="step-3" class="hidden fixed inset-0 bg-[#d90429] z-50 overflow-y-auto p-6 text-white text-center">
-        <!-- زينة أعياد الميلاد (Bunting Garland) -->
-        <div class="absolute top-0 left-0 right-0 h-12 flex justify-between px-4 pt-1 opacity-90">
-            <span class="text-2xl">🎉</span><span class="text-2xl">🚩</span><span class="text-2xl">✨</span><span class="text-2xl">🎈</span><span class="text-2xl">🚩</span><span class="text-2xl">🎉</span>
+    <!-- 3️⃣ الشاشة الثالثة: الكارت النهائي + Canvas الألعاب النارية والزينة الموزعة -->
+    <div id="step-3" 
+         class="hidden hidden-transition fixed inset-0 z-50 overflow-y-auto p-6 text-white"
+         style="background-color: {{ data.bg_color if data.bg_color else '#d90429' }};">
+        
+        <!-- Canvas خاص بالألعاب النارية في خلفية العناصر -->
+        <canvas id="fireworksCanvas"></canvas>
+
+        <!-- زينة متنوعة موزعة على كامل الشاشة (بعيدة عن المنتصف) -->
+        <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div class="decor-item text-4xl top-6 left-6" style="animation-delay: 0s;">🎈</div>
+            <div class="decor-item text-3xl top-12 right-10" style="animation-delay: 1s;">✨</div>
+            <div class="decor-item text-4xl top-1/4 left-8" style="animation-delay: 2s;">🎉</div>
+            <div class="decor-item text-3xl top-1/3 right-6" style="animation-delay: 0.5s;">🌟</div>
+            <div class="decor-item text-4xl bottom-1/3 left-6" style="animation-delay: 1.5s;">🥳</div>
+            <div class="decor-item text-3xl bottom-1/4 right-8" style="animation-delay: 2.5s;">✨</div>
+            <div class="decor-item text-4xl bottom-10 left-10" style="animation-delay: 0.8s;">🎈</div>
+            <div class="decor-item text-4xl bottom-8 right-12" style="animation-delay: 1.8s;">🎉</div>
         </div>
 
-        <div class="max-w-md mx-auto pt-10 space-y-6">
+        <!-- المحتوى الرئيسي (في منتصف الشاشة وبترتيب z-10 ليبقى فوق الألعاب والزينة) -->
+        <div class="max-w-md mx-auto pt-6 pb-16 space-y-6 text-left relative z-10">
             
-            <!-- حاوية الصورة + الطاقية والأستيكرات الأوتوماتيكية -->
-            <div class="relative inline-block mt-4">
-                <!-- صورة الشخص المرفوعة -->
-                <div class="w-48 h-48 mx-auto rounded-full overflow-hidden border-4 border-white shadow-2xl bg-black">
-                    <img src="{{ data.photo_url }}" class="w-full h-full object-cover">
-                </div>
-
-                <!-- طاقية عيد الميلاد الأوتوماتيكية (CSS Sticker) -->
-                <div class="absolute -top-10 left-12 text-5xl transform -rotate-12 select-none pointer-events-none drop-shadow-md">
-                    🥳
-                </div>
-
-                <!-- كيكة عيد الميلاد الأوتوماتيكية -->
-                <div class="absolute -bottom-4 -right-2 text-4xl select-none pointer-events-none drop-shadow-md animate-pulse">
-                    🎂
-                </div>
+            <div class="w-72 mx-auto my-6 flex items-center justify-center">
+                <img src="{{ data.photo_url }}" class="w-full h-auto object-contain drop-shadow-2xl">
             </div>
 
-            <h2 class="handwriting text-4xl font-bold text-white mt-4">Happy Birthday, my love.</h2>
-
-            <!-- النص الطويل -->
-            <div class="handwriting text-2xl text-left leading-relaxed whitespace-pre-line px-2 text-gray-100">
+            <div class="handwriting text-3xl leading-relaxed whitespace-pre-line text-white opacity-95">
                 {{ data.main_message }}
             </div>
+
         </div>
     </div>
 
     <script>
+        const step1 = document.getElementById('step-1');
+        const step2 = document.getElementById('step-2');
+        const step3 = document.getElementById('step-3');
+
         function playAudio() {
             const audio = document.getElementById('bgMusic');
-            if (audio) {
-                audio.play().catch(e => console.log(e));
-            }
+            if (audio) { audio.play().catch(e => console.log(e)); }
+        }
+
+        // إطلاق الألعاب النارية من زوايا الشاشة كاملة مستهدفة الجوانب
+        function startFullPageFireworks() {
+            const canvas = document.getElementById('fireworksCanvas');
+            const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });
+
+            const duration = 4 * 1000;
+            const animationEnd = Date.now() + duration;
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+                if (timeLeft <= 0) return clearInterval(interval);
+
+                // ألعاب نارية من الأعلى والأسفل والجوانب، مع الابتعاد عن منتصف الشاشة (x بين 0.4 و 0.6)
+                myConfetti({
+                    particleCount: 25,
+                    startVelocity: 30,
+                    spread: 360,
+                    origin: { x: Math.random() * 0.35, y: Math.random() } 
+                });
+                myConfetti({
+                    particleCount: 25,
+                    startVelocity: 30,
+                    spread: 360,
+                    origin: { x: (Math.random() * 0.35) + 0.65, y: Math.random() } 
+                });
+            }, 300);
         }
 
         function openEmail() {
             playAudio();
-            document.getElementById('step-1').classList.add('hidden');
-            document.getElementById('step-2').classList.remove('hidden');
+            step1.classList.add('hidden-transition');
+            setTimeout(() => {
+                step1.classList.add('hidden');
+                step2.classList.remove('hidden');
+                setTimeout(() => step2.classList.remove('hidden-transition'), 50);
+            }, 400);
         }
 
         function openMainCard() {
-            document.getElementById('step-2').classList.add('hidden');
-            document.getElementById('step-3').classList.remove('hidden');
+            step2.classList.add('hidden-transition');
+            setTimeout(() => {
+                step2.classList.add('hidden');
+                step3.classList.remove('hidden');
+                setTimeout(() => {
+                    step3.classList.remove('hidden-transition');
+                    startFullPageFireworks();
+                }, 50);
+            }, 400);
         }
 
-        // تشغيل الصوت عند أول تفاعل باللمس أو الكليك
         document.addEventListener('click', playAudio, { once: true });
         document.addEventListener('touchstart', playAudio, { once: true });
     </script>

@@ -1,77 +1,68 @@
 import os
 import uuid
-import qrcode
 from flask import Flask, render_template, request, redirect, url_for
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['QR_FOLDER'] = 'static/qrcodes'
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['QR_FOLDER'], exist_ok=True)
+# تحديد فولدر حفظ الملفات المرفوعة
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# قاعدة بيانات مؤقتة في الذاكرة
-db = {}
+cards_db = {}
 
 @app.route('/', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
-        page_id = str(uuid.uuid4())[:8]
-        
-        # استلام البيانات من الفورم
-        sender_name = request.form.get('sender_name', 'Babe')
-        recipient_name = request.form.get('recipient_name', 'My Love')
-        email_message = request.form.get('email_message', 'Check out this awesome surprises for YOU!')
-        main_message = request.form.get('main_message', '')
-        
-        # رفع الصورة الشخصية
-        photo = request.files.get('photo')
-        photo_url = None
-        if photo and photo.filename != '':
-            filename = f"{page_id}_{secure_filename(photo.filename)}"
-            photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            photo_url = url_for('static', filename=f'uploads/{filename}')
+        card_id = str(uuid.uuid4())[:8]
 
-        # رفع الملف الصوتى
-        song = request.files.get('song')
-        song_url = None
-        if song and song.filename != '':
-            song_name = f"{page_id}_{secure_filename(song.filename)}"
-            song.save(os.path.join(app.config['UPLOAD_FOLDER'], song_name))
-            song_url = url_for('static', filename=f'uploads/{song_name}')
+        # 1. معالجة رفع الصورة
+        photo_file = request.files.get('photo_file')
+        if photo_file and photo_file.filename != '':
+            photo_filename = secure_filename(photo_file.filename)
+            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], photo_filename)
+            photo_file.save(photo_path)
+            photo_url = f"/static/uploads/{photo_filename}"
+        else:
+            photo_url = '/static/child_cutout.png'
 
-        # حفظ البيانات
-        db[page_id] = {
-            'sender_name': sender_name,
-            'recipient_name': recipient_name,
-            'email_message': email_message,
-            'main_message': main_message,
+        # 2. معالجة رفع الأغنية
+        song_file = request.files.get('song_file')
+        if song_file and song_file.filename != '':
+            song_filename = secure_filename(song_file.filename)
+            song_path = os.path.join(app.config['UPLOAD_FOLDER'], song_filename)
+            song_file.save(song_path)
+            song_url = f"/static/uploads/{song_filename}"
+        else:
+            song_url = '/static/birthday_song.mp3'
+
+        # حفظ البيانات في الداتابيز
+        cards_db[card_id] = {
+            'recipient_name': request.form.get('recipient_name', 'Love'),
+            'sender_name': request.form.get('sender_name', 'Me'),
+            'email_message': request.form.get('email_message', ''),
+            'main_message': request.form.get('main_message', ''),
             'photo_url': photo_url,
-            'song_url': song_url
+            'song_url': song_url,
+            'bg_color': request.form.get('bg_color', '#d90429')
         }
 
-        # إنشاء QR Code
-        domain = request.host_url.rstrip('/')
-        target_url = f"{domain}/card/{page_id}"
-        qr = qrcode.QRCode(version=1, box_size=10, border=2)
-        qr.add_data(target_url)
-        qr.make(fit=True)
-        qr_img = qr.make_image(fill_color="black", back_color="white")
-        qr_filename = f"{page_id}.png"
-        qr_img.save(os.path.join(app.config['QR_FOLDER'], qr_filename))
-
-        return render_template('admin.html', 
-                               card_url=target_url, 
-                               qr_url=url_for('static', filename=f'qrcodes/{qr_filename}'))
+        return redirect(url_for('show_card', card_id=card_id))
 
     return render_template('admin.html')
 
-@app.route('/card/<page_id>')
-def show_card(page_id):
-    data = db.get(page_id)
-    if not data:
-        return "الصفحة غير موجودة 404", 404
+@app.route('/card/<card_id>')
+def show_card(card_id):
+    data = cards_db.get(card_id, {
+        'recipient_name': 'Love',
+        'sender_name': 'Me',
+        'email_message': 'You have a special birthday message inside!',
+        'main_message': 'Happy Birthday, my love.',
+        'photo_url': '/static/child_cutout.png',
+        'song_url': '/static/birthday_song.mp3',
+        'bg_color': '#d90429'
+    })
     return render_template('card.html', data=data)
 
 if __name__ == '__main__':
