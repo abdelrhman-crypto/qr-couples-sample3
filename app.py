@@ -17,7 +17,7 @@ cloudinary.config(
 
 # 2. إعدادات Supabase REST API (مباشر وبدون مكتبات خارجية)
 SUPABASE_URL = "https://eqgtvdjbcpbuhbdmoqyg.supabase.co"
-SUPABASE_KEY = "حط_هنا_الـ_Publishable_Key_بتاعك" # اللي بيبدأ بـ sb_publishable
+SUPABASE_KEY = "sb_publishable_OXGLGEiNaAUPl2mLPTgKOw_lc1OzwyZ"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
