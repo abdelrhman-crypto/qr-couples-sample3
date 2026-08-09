@@ -15,9 +15,9 @@ cloudinary.config(
     secure = True
 )
 
-# 2. إعدادات Supabase REST API (مباشر وبدون مكتبات خارجية)
+# 2. إعدادات Supabase REST API
 SUPABASE_URL = "https://eqgtvdjbcpbuhbdmoqyg.supabase.co"
-SUPABASE_KEY = "sb_publishable_OXGLGEiNaAUPl2mLPTgKOw_lc1OzwyZ"
+SUPABASE_KEY = "sb_publishable_OXGLGEiNaAUP12mLPTgK0w_lc10z"
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -63,7 +63,7 @@ def admin():
             'bg_color': request.form.get('bg_color', '#d90429')
         }
 
-        # حفظ البيانات في Supabase عبر REST API
+        # حفظ البيانات في Supabase
         try:
             endpoint = f"{SUPABASE_URL}/rest/v1/cards"
             requests.post(endpoint, json=card_data, headers=HEADERS, timeout=5)
@@ -86,7 +86,7 @@ def show_card(card_id):
         'bg_color': '#d90429'
     }
 
-    # جلب البيانات من Supabase عبر REST API
+    # جلب البيانات من Supabase
     try:
         endpoint = f"{SUPABASE_URL}/rest/v1/cards?card_id=eq.{card_id}&select=*"
         res = requests.get(endpoint, headers=HEADERS, timeout=5)
