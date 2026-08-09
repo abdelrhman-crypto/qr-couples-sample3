@@ -11,7 +11,7 @@ app = Flask(__name__)
 cloudinary.config(
     cloud_name = "xb0obyk3",
     api_key = "315196189644478",
-    api_secret = "rvS2Eur12DH8scXcge7YHCvnP0E",
+    api_secret = "sb_publishable_OXGLGEiNaAUPl2mLPTgKOw_lc1OzwyZ",
     secure = True
 )
 
