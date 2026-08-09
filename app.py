@@ -7,9 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
 
-# ---------------------------------------------------------
 # 1. إعدادات Cloudinary
-# ---------------------------------------------------------
 cloudinary.config(
     cloud_name = "xb0obyk3",
     api_key = "315196189644478",
@@ -17,10 +15,8 @@ cloudinary.config(
     secure = True
 )
 
-# ---------------------------------------------------------
-# 2. إدارة قاعدة البيانات المحلية (database.json)
-# ---------------------------------------------------------
-DB_FILE = 'database.json'
+# 2. حفظ قاعدة البيانات في مجلد /tmp الخاص ببيئة Vercel
+DB_FILE = '/tmp/database.json'
 
 def load_db():
     if not os.path.exists(DB_FILE):
@@ -32,18 +28,19 @@ def load_db():
         return {}
 
 def save_db(data):
-    with open(DB_FILE, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+    try:
+        with open(DB_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print("Save Error:", e)
 
-# ---------------------------------------------------------
 # 3. الـ Routes
-# ---------------------------------------------------------
 @app.route('/', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
         card_id = str(uuid.uuid4())[:8]
 
-        # 1. رفع الصورة إلى Cloudinary
+        # رفع الصورة إلى Cloudinary
         photo_file = request.files.get('photo_file')
         if photo_file and photo_file.filename != '':
             upload_result = cloudinary.uploader.upload(
@@ -52,9 +49,9 @@ def admin():
             )
             photo_url = upload_result.get('secure_url')
         else:
-            photo_url = '/static/child_cutout.png'
+            photo_url = ''
 
-        # 2. رفع الأغنية إلى Cloudinary
+        # رفع الأغنية إلى Cloudinary
         song_file = request.files.get('song_file')
         if song_file and song_file.filename != '':
             upload_result = cloudinary.uploader.upload(
@@ -64,9 +61,9 @@ def admin():
             )
             song_url = upload_result.get('secure_url')
         else:
-            song_url = '/static/birthday_song.mp3'
+            song_url = ''
 
-        # 3. حفظ بيانات الكارت في database.json
+        # حفظ البيانات
         db = load_db()
         db[card_id] = {
             'recipient_name': request.form.get('recipient_name', 'Love'),
@@ -89,10 +86,10 @@ def show_card(card_id):
     data = db.get(card_id, {
         'recipient_name': 'Love',
         'sender_name': 'Me',
-        'email_message': 'You have a special birthday message inside!',
-        'main_message': 'Happy Birthday, my love.',
-        'photo_url': '/static/child_cutout.png',
-        'song_url': '/static/birthday_song.mp3',
+        'email_message': 'You have a special message inside!',
+        'main_message': 'Happy Birthday!',
+        'photo_url': '',
+        'song_url': '',
         'bg_color': '#d90429'
     })
     return render_template('card.html', data=data)
