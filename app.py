@@ -1,5 +1,4 @@
 import os
-import json
 import uuid
 import cloudinary
 import cloudinary.uploader
@@ -11,61 +10,40 @@ app = Flask(__name__)
 cloudinary.config(
     cloud_name = "xb0obyk3",
     api_key = "315196189644478",
-    api_secret = "sb_publishable_OXGLGEiNaAUPl2mLPTgKOw_lc1OzwyZ",
+    api_secret = "rvS2Eur12DH8scXcge7YHCvnP0E",
     secure = True
 )
 
-# 2. حفظ قاعدة البيانات في مجلد /tmp الخاص ببيئة Vercel
-DB_FILE = '/tmp/database.json'
+# ذاكرة مؤقتة بسيطة
+cards_db = {}
 
-def load_db():
-    if not os.path.exists(DB_FILE):
-        return {}
-    try:
-        with open(DB_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-def save_db(data):
-    try:
-        with open(DB_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        print("Save Error:", e)
-
-# 3. الـ Routes
 @app.route('/', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
         card_id = str(uuid.uuid4())[:8]
 
-        # رفع الصورة إلى Cloudinary
+        # رفع الصورة
         photo_file = request.files.get('photo_file')
+        photo_url = ''
         if photo_file and photo_file.filename != '':
-            upload_result = cloudinary.uploader.upload(
-                photo_file,
-                folder="cards/photos"
-            )
-            photo_url = upload_result.get('secure_url')
-        else:
-            photo_url = ''
+            try:
+                res = cloudinary.uploader.upload(photo_file, folder="cards/photos")
+                photo_url = res.get('secure_url', '')
+            except Exception as e:
+                print("Photo Upload Error:", e)
 
-        # رفع الأغنية إلى Cloudinary
+        # رفع الصوت
         song_file = request.files.get('song_file')
+        song_url = ''
         if song_file and song_file.filename != '':
-            upload_result = cloudinary.uploader.upload(
-                song_file,
-                resource_type="auto",
-                folder="cards/audio"
-            )
-            song_url = upload_result.get('secure_url')
-        else:
-            song_url = ''
+            try:
+                res = cloudinary.uploader.upload(song_file, resource_type="auto", folder="cards/audio")
+                song_url = res.get('secure_url', '')
+            except Exception as e:
+                print("Song Upload Error:", e)
 
-        # حفظ البيانات
-        db = load_db()
-        db[card_id] = {
+        # حفظ الكارت
+        cards_db[card_id] = {
             'recipient_name': request.form.get('recipient_name', 'Love'),
             'sender_name': request.form.get('sender_name', 'Me'),
             'email_message': request.form.get('email_message', ''),
@@ -74,7 +52,6 @@ def admin():
             'song_url': song_url,
             'bg_color': request.form.get('bg_color', '#d90429')
         }
-        save_db(db)
 
         return redirect(url_for('show_card', card_id=card_id))
 
@@ -82,8 +59,7 @@ def admin():
 
 @app.route('/card/<card_id>')
 def show_card(card_id):
-    db = load_db()
-    data = db.get(card_id, {
+    data = cards_db.get(card_id, {
         'recipient_name': 'Love',
         'sender_name': 'Me',
         'email_message': 'You have a special message inside!',
