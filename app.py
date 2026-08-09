@@ -1,44 +1,74 @@
 import os
+import json
 import uuid
+import cloudinary
+import cloudinary.uploader
 from flask import Flask, render_template, request, redirect, url_for
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-# تحديد فولدر حفظ الملفات المرفوعة
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# ---------------------------------------------------------
+# 1. إعدادات Cloudinary
+# ---------------------------------------------------------
+cloudinary.config(
+    cloud_name = "xb0obyk3",
+    api_key = "315196189644478",
+    api_secret = "rvS2Eur12DH8scXcge7YHCvnP0E",
+    secure = True
+)
 
-cards_db = {}
+# ---------------------------------------------------------
+# 2. إدارة قاعدة البيانات المحلية (database.json)
+# ---------------------------------------------------------
+DB_FILE = 'database.json'
 
+def load_db():
+    if not os.path.exists(DB_FILE):
+        return {}
+    try:
+        with open(DB_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_db(data):
+    with open(DB_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+# ---------------------------------------------------------
+# 3. الـ Routes
+# ---------------------------------------------------------
 @app.route('/', methods=['GET', 'POST'])
 def admin():
     if request.method == 'POST':
         card_id = str(uuid.uuid4())[:8]
 
-        # 1. معالجة رفع الصورة
+        # 1. رفع الصورة إلى Cloudinary
         photo_file = request.files.get('photo_file')
         if photo_file and photo_file.filename != '':
-            photo_filename = secure_filename(photo_file.filename)
-            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], photo_filename)
-            photo_file.save(photo_path)
-            photo_url = f"/static/uploads/{photo_filename}"
+            upload_result = cloudinary.uploader.upload(
+                photo_file,
+                folder="cards/photos"
+            )
+            photo_url = upload_result.get('secure_url')
         else:
             photo_url = '/static/child_cutout.png'
 
-        # 2. معالجة رفع الأغنية
+        # 2. رفع الأغنية إلى Cloudinary
         song_file = request.files.get('song_file')
         if song_file and song_file.filename != '':
-            song_filename = secure_filename(song_file.filename)
-            song_path = os.path.join(app.config['UPLOAD_FOLDER'], song_filename)
-            song_file.save(song_path)
-            song_url = f"/static/uploads/{song_filename}"
+            upload_result = cloudinary.uploader.upload(
+                song_file,
+                resource_type="auto",
+                folder="cards/audio"
+            )
+            song_url = upload_result.get('secure_url')
         else:
             song_url = '/static/birthday_song.mp3'
 
-        # حفظ البيانات في الداتابيز
-        cards_db[card_id] = {
+        # 3. حفظ بيانات الكارت في database.json
+        db = load_db()
+        db[card_id] = {
             'recipient_name': request.form.get('recipient_name', 'Love'),
             'sender_name': request.form.get('sender_name', 'Me'),
             'email_message': request.form.get('email_message', ''),
@@ -47,6 +77,7 @@ def admin():
             'song_url': song_url,
             'bg_color': request.form.get('bg_color', '#d90429')
         }
+        save_db(db)
 
         return redirect(url_for('show_card', card_id=card_id))
 
@@ -54,7 +85,8 @@ def admin():
 
 @app.route('/card/<card_id>')
 def show_card(card_id):
-    data = cards_db.get(card_id, {
+    db = load_db()
+    data = db.get(card_id, {
         'recipient_name': 'Love',
         'sender_name': 'Me',
         'email_message': 'You have a special birthday message inside!',
