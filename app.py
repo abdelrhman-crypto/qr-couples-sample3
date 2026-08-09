@@ -23,7 +23,7 @@ HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json",
-    "Prefer": "return=minimal"
+    "Prefer": "return=representation"
 }
 
 @app.route('/', methods=['GET', 'POST'])
@@ -66,7 +66,8 @@ def admin():
         # حفظ البيانات في Supabase
         try:
             endpoint = f"{SUPABASE_URL}/rest/v1/cards"
-            requests.post(endpoint, json=card_data, headers=HEADERS, timeout=5)
+            response = requests.post(endpoint, json=card_data, headers=HEADERS, timeout=10)
+            print("Supabase Response:", response.status_code, response.text)
         except Exception as e:
             print("Supabase Save Error:", e)
 
@@ -89,7 +90,7 @@ def show_card(card_id):
     # جلب البيانات من Supabase
     try:
         endpoint = f"{SUPABASE_URL}/rest/v1/cards?card_id=eq.{card_id}&select=*"
-        res = requests.get(endpoint, headers=HEADERS, timeout=5)
+        res = requests.get(endpoint, headers=HEADERS, timeout=10)
         if res.status_code == 200 and len(res.json()) > 0:
             data = res.json()[0]
         else:
