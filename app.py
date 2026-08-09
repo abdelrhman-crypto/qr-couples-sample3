@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 import requests
 import cloudinary
 import cloudinary.uploader
@@ -14,17 +15,6 @@ cloudinary.config(
     api_secret = "rvS2Eur12DH8scXcge7YHCvnP0E",
     secure = True
 )
-
-# 2. إعدادات Supabase REST API
-SUPABASE_URL = "https://eqgtvdjbcpbuhbdmoqyg.supabase.co"
-SUPABASE_KEY = "sb_publishable_OXGLGEiNaAUP12mLPTgK0w_lc10z"
-
-HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation"
-}
 
 @app.route('/', methods=['GET', 'POST'])
 def admin():
@@ -51,7 +41,7 @@ def admin():
             except Exception as e:
                 print("Song Upload Error:", e)
 
-        # تجهيز البيانات
+        # تجهيز بيانات الكارت
         card_data = {
             'card_id': card_id,
             'recipient_name': request.form.get('recipient_name', 'Love'),
@@ -63,13 +53,17 @@ def admin():
             'bg_color': request.form.get('bg_color', '#d90429')
         }
 
-        # حفظ البيانات في Supabase
+        # حفظ البيانات دائمًا على Cloudinary كملف JSON بنفس اسم الـ card_id
         try:
-            endpoint = f"{SUPABASE_URL}/rest/v1/cards"
-            response = requests.post(endpoint, json=card_data, headers=HEADERS, timeout=10)
-            print("Supabase Response:", response.status_code, response.text)
+            json_data = json.dumps(card_data)
+            cloudinary.uploader.upload(
+                json_data.encode('utf-8'),
+                public_id=f"cards/data/{card_id}.json",
+                resource_type="raw",
+                overwrite=True
+            )
         except Exception as e:
-            print("Supabase Save Error:", e)
+            print("Cloudinary Save Error:", e)
 
         return redirect(url_for('show_card', card_id=card_id))
 
@@ -87,16 +81,16 @@ def show_card(card_id):
         'bg_color': '#d90429'
     }
 
-    # جلب البيانات من Supabase
+    # قراءة بيانات الكارت مباشرة من Cloudinary
     try:
-        endpoint = f"{SUPABASE_URL}/rest/v1/cards?card_id=eq.{card_id}&select=*"
-        res = requests.get(endpoint, headers=HEADERS, timeout=10)
-        if res.status_code == 200 and len(res.json()) > 0:
-            data = res.json()[0]
+        json_url = f"https://res.cloudinary.com/xb0obyk3/raw/upload/cards/data/{card_id}.json"
+        res = requests.get(json_url, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
         else:
             data = default_data
     except Exception as e:
-        print("Supabase Fetch Error:", e)
+        print("Fetch Error:", e)
         data = default_data
 
     return render_template('card.html', data=data)
